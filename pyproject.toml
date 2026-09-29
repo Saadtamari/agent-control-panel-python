@@ -1,0 +1,83 @@
+[build-system]
+requires = ["hatchling==1.32.4"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agent-control-panel"
+dynamic = ["version"]
+description = "Agent Control Panel SDK for Python: fail-open reporting and remote control for AI agents"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+dependencies = []
+keywords = ["ai", "agents", "llm", "observability", "control-plane", "openai", "anthropic"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Software Development :: Libraries",
+  "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/Saadtamari/agent-control-panel-python#readme"
+Source = "https://github.com/Saadtamari/agent-control-panel-python"
+Issues = "https://github.com/Saadtamari/agent-control-panel-python/issues"
+Changelog = "https://github.com/Saadtamari/agent-control-panel-python/blob/main/CHANGELOG.md"
+
+[tool.hatch.version]
+path = "src/agent_control_panel/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agent_control_panel"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/agent_control_panel",
+  "tests",
+  "README.md",
+  "CHANGELOG.md",
+  "LICENSE",
+  "SECURITY.md",
+  "pyproject.toml",
+]
+exclude = ["**/__pycache__"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra --strict-markers"
+filterwarnings = ["error"]
+
+[tool.mypy]
+strict = true
+python_version = "3.10"
+mypy_path = "src"
+files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+# Tests assert a property, act, then assert it again; mypy's literal narrowing reads that as impossible.
+module = "tests.*"
+disable_error_code = ["comparison-overlap"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF", "PT"]
+ignore = [
+  "S101", # assert is how pytest tests are written
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106"] # fixed, fake test secrets

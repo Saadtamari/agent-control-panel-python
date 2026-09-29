@@ -1,0 +1,33 @@
+name: ci
+
+# Runs the SDK's lint, type check, tests and build on pushes and pull requests to this public repository.
+# This repository is a mirror: changes are made in the main repository and copied here on release.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install --require-hashes -r requirements-dev.txt
+      - run: ruff check src tests
+      - run: ruff format --check src tests
+      - run: mypy
+      - run: python -m pytest -p no:cacheprovider
+      - run: python -m build && python -m twine check --strict dist/*
