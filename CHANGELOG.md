@@ -4,7 +4,7 @@ All notable changes to the Python SDK. Versions stay `0.x` until the wire contra
 customers; after the first public release, contract changes are additive only (clients live inside customer
 apps). The wire contract is the same as the Node SDK (`agent-control-panel` on npm).
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-09-29)
 
 First release, with the same behaviour and wire contract as the Node SDK 0.3.0:
 
