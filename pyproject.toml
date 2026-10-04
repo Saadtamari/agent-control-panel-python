@@ -5,13 +5,16 @@ build-backend = "hatchling.build"
 [project]
 name = "agent-control-panel"
 dynamic = ["version"]
-description = "Agent Control Panel SDK for Python: fail-open reporting and remote control for AI agents"
+description = "Agent Control Panel SDK for Python: monitor AI agents in production and pause, resume, stop or swap their model without redeploying"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
 dependencies = []
-keywords = ["ai", "agents", "llm", "observability", "control-plane", "openai", "anthropic"]
+keywords = [
+  "ai", "agents", "llm", "observability", "control-plane", "openai", "anthropic",
+  "gemini", "ai-agents", "agent-control-panel", "agent-monitoring", "kill-switch",
+]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
@@ -28,7 +31,8 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Saadtamari/agent-control-panel-python#readme"
+Homepage = "https://acp.skaigroup.tech"
+Documentation = "https://acp.skaigroup.tech/docs"
 Source = "https://github.com/Saadtamari/agent-control-panel-python"
 Issues = "https://github.com/Saadtamari/agent-control-panel-python/issues"
 Changelog = "https://github.com/Saadtamari/agent-control-panel-python/blob/main/CHANGELOG.md"

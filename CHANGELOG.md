@@ -4,6 +4,12 @@ All notable changes to the Python SDK. Versions stay `0.x` until the wire contra
 customers; after the first public release, contract changes are additive only (clients live inside customer
 apps). The wire contract is the same as the Node SDK (`agent-control-panel` on npm).
 
+## 0.1.1 (2026-10-03)
+
+Package metadata only; no code changes. PyPI links the website and the documentation (`Homepage`,
+`Documentation`), the summary says what the SDK does, more search keywords, and the README links the docs and the
+quickstart.
+
 ## 0.1.0 (2026-09-29)
 
 First release, with the same behaviour and wire contract as the Node SDK 0.3.0:

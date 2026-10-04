@@ -4,6 +4,8 @@ Connect an AI agent that already runs in your app to [Agent Control Panel](https
 (ACP): report every run (tokens, model, latency, errors, the answer) and let your team **pause, resume, stop,
 restart, swap the model or push an approved prompt** without redeploying.
 
+**Docs:** [acp.skaigroup.tech/docs](https://acp.skaigroup.tech/docs) · [Quickstart](https://acp.skaigroup.tech/docs/get-started/quickstart) · [What is an AI agent control panel?](https://acp.skaigroup.tech/guides/ai-agent-control-panel)
+
 - **Fail-open.** If ACP is slow or down, your agent keeps working. Reporting is buffered and retried on a
   background thread; nothing the SDK does raises into your code (except `AgentPausedError`, on purpose).
 - **Signed control.** Commands are HMAC-SHA256 signed with a timestamp and a single-use nonce; unsigned,
