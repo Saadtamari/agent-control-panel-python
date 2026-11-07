@@ -4,6 +4,12 @@ All notable changes to the Python SDK. Versions stay `0.x` until the wire contra
 customers; after the first public release, contract changes are additive only (clients live inside customer
 apps). The wire contract is the same as the Node SDK (`agent-control-panel` on npm).
 
+## 0.1.2 (2026-11-03)
+
+Package metadata only; no code changes. The website moved to https://agentcontrolpanel.si: PyPI (`Homepage`,
+`Documentation`), the README and SECURITY.md now link it. The old links redirect there. The API host your app
+reports to is unchanged.
+
 ## 0.1.1 (2026-10-03)
 
 Package metadata only; no code changes. PyPI links the website and the documentation (`Homepage`,

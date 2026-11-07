@@ -31,8 +31,8 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://acp.skaigroup.tech"
-Documentation = "https://acp.skaigroup.tech/docs"
+Homepage = "https://agentcontrolpanel.si"
+Documentation = "https://agentcontrolpanel.si/docs"
 Source = "https://github.com/Saadtamari/agent-control-panel-python"
 Issues = "https://github.com/Saadtamari/agent-control-panel-python/issues"
 Changelog = "https://github.com/Saadtamari/agent-control-panel-python/blob/main/CHANGELOG.md"
