@@ -4,6 +4,15 @@ All notable changes to the Python SDK. Versions stay `0.x` until the wire contra
 customers; after the first public release, contract changes are additive only (clients live inside customer
 apps). The wire contract is the same as the Node SDK (`agent-control-panel` on npm).
 
+## 0.1.3 (2026-11-07)
+
+A pause now holds across restarts. A restarted process starts `idle` until ACP's first heartbeat reply, and
+`wrap_agent_run` used to run straight away: a paused agent ran once after every restart or deploy. After
+`start()`, the first `wrap_agent_run` / `wrap_agent_run_async` now waits for that reply, at most
+`startup_wait_seconds` (new option, default 3; 0 turns it off; the async wrapper waits off the event loop).
+Fail-open: if ACP does not answer in time the run goes ahead, and later runs never wait. No wait with
+`disable_control`, or when `start()` was not called.
+
 ## 0.1.2 (2026-11-03)
 
 Package metadata only; no code changes. The website moved to https://agentcontrolpanel.si: PyPI (`Homepage`,

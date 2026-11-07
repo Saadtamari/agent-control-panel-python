@@ -44,12 +44,17 @@ def create_client(
     disable_control: bool = False,
     allow_insecure_http: bool = False,
     capture_content: bool = True,
+    startup_wait_seconds: float = 3.0,
     transport: Transport | None = None,
 ) -> AcpClient:
     """Create a client for one agent. Call ``start()`` (or use ``with``) for heartbeats and flushes.
 
     ``capture_content=False`` sends metadata only (status, tokens, timings, model, errors): no user input,
     summaries, full input or answer text, whatever ``report_run`` or ``wrap_agent_run`` is given.
+
+    After ``start()``, the first ``wrap_agent_run`` waits up to ``startup_wait_seconds`` (default 3) for ACP's
+    first heartbeat reply, so a pause or stop set in ACP holds across restarts. If ACP does not answer in time
+    the run goes ahead (fail-open) and later runs never wait; 0 turns the wait off.
 
     Raises ``ValueError`` for a missing credential or an insecure URL; nothing else in the client raises
     into your code except ``AgentPausedError`` from ``wrap_agent_run``.
@@ -68,6 +73,7 @@ def create_client(
         disable_control=disable_control,
         allow_insecure_http=allow_insecure_http,
         capture_content=capture_content,
+        startup_wait_seconds=startup_wait_seconds,
         transport=transport,
     )
 

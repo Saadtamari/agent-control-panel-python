@@ -47,6 +47,83 @@ def test_start_sends_a_heartbeat_at_once_and_a_fresh_process_adopts_a_pause(
     assert called == []
 
 
+# 2026-11-03: a paused agent ran once right after a deploy, because the first run started before the first
+# heartbeat reply arrived. A pause must hold across restarts.
+
+
+def _slow(reply: Response, seconds: float) -> FakeTransport:
+    def handler(req: Request) -> Response:
+        if req.url.endswith("/api/heartbeat"):
+            time.sleep(seconds)
+            return reply
+        return Response(200, b"{}")
+
+    return FakeTransport(handler)
+
+
+def test_a_run_started_right_after_start_is_refused_when_acp_holds_a_pause(
+    make_client: ClientFactory,
+) -> None:
+    acp = make_client(transport=_slow(_hb("paused"), 0.1), heartbeat_seconds=60)
+    acp.start()
+    called: list[int] = []
+    with pytest.raises(AgentPausedError):
+        acp.wrap_agent_run(lambda: called.append(1))
+    assert called == []
+
+
+def test_the_async_wrapper_also_holds_a_stop_right_after_start(make_client: ClientFactory) -> None:
+    acp = make_client(transport=_slow(_hb("stopped"), 0.1), heartbeat_seconds=60)
+    acp.start()
+    called: list[int] = []
+
+    async def work() -> None:
+        called.append(1)
+
+    with pytest.raises(AgentPausedError):
+        asyncio.run(acp.wrap_agent_run_async(work))
+    assert called == []
+
+
+def test_startup_wait_fails_open_and_only_the_first_run_waits(make_client: ClientFactory) -> None:
+    gate = threading.Event()
+
+    def hanging(req: Request) -> Response:
+        if req.url.endswith("/api/heartbeat"):
+            gate.wait(5)
+        return Response(200, b"{}")
+
+    acp = make_client(transport=FakeTransport(hanging), heartbeat_seconds=60, startup_wait_seconds=0.2)
+    acp.start()
+    t0 = time.monotonic()
+    assert acp.wrap_agent_run(lambda: "first") == "first"
+    first_wait = time.monotonic() - t0
+    assert 0.15 <= first_wait < 2
+    t1 = time.monotonic()
+    assert acp.wrap_agent_run(lambda: "second") == "second"
+    assert time.monotonic() - t1 < 0.1
+    gate.set()
+
+
+def test_no_startup_wait_when_off_when_control_is_disabled_or_when_not_started(
+    make_client: ClientFactory,
+) -> None:
+    for extra in ({"startup_wait_seconds": 0}, {"disable_control": True}):
+        acp = make_client(transport=_slow(_hb("paused"), 0.5), heartbeat_seconds=60, **extra)
+        acp.start()
+        t0 = time.monotonic()
+        assert acp.wrap_agent_run(lambda: "ran") == "ran"
+        assert time.monotonic() - t0 < 0.3
+        acp.stop(timeout=1)
+    not_started = make_client(transport=_slow(_hb("paused"), 0.5))
+    assert not_started.wrap_agent_run(lambda: "ran") == "ran"
+
+
+def test_startup_wait_seconds_must_not_be_negative(make_client: ClientFactory) -> None:
+    with pytest.raises(ValueError, match="startup_wait_seconds"):
+        make_client(startup_wait_seconds=-1)
+
+
 def test_threads_are_daemons_and_stop_ends_them(make_client: ClientFactory) -> None:
     acp = make_client(heartbeat_seconds=0.05, flush_seconds=0.05)
     acp.start()

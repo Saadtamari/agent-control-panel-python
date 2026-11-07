@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -49,6 +50,7 @@ class AcpClient(Background):
         disable_control: bool = False,
         allow_insecure_http: bool = False,
         capture_content: bool = True,
+        startup_wait_seconds: float = 3.0,
         transport: Transport | None = None,
     ) -> None:
         if not url:
@@ -66,6 +68,8 @@ class AcpClient(Background):
             raise ValueError(
                 "create_client: heartbeat_seconds, flush_seconds, flush_at, max_buffer must be > 0"
             )
+        if startup_wait_seconds < 0:
+            raise ValueError("create_client: startup_wait_seconds must be >= 0")
 
         self.url = url.rstrip("/")
         self.api_key = api_key.strip()
@@ -74,6 +78,7 @@ class AcpClient(Background):
         self.webhook_secret_prev = (webhook_secret_prev or "").strip() or None
         self.disable_control = disable_control or os.environ.get("ACP_DISABLE_CONTROL") == "1"
         self.capture_content = capture_content
+        self._startup_wait_seconds = startup_wait_seconds
         self._log = logger or logging.getLogger("agent_control_panel")
         super().__init__(heartbeat_seconds, flush_seconds)
         self._api = Api(
@@ -125,6 +130,15 @@ class AcpClient(Background):
 
     def __exit__(self, *exc: object) -> None:
         self.stop()
+
+    def _await_startup_control_state(self) -> None:
+        """A process that restarts starts "idle" until ACP's first heartbeat reply says otherwise, so without
+        this a paused agent ran once after every restart. Bounded by ``startup_wait_seconds`` and fail-open;
+        only the first run(s) after ``start()`` wait."""
+        if not self._startup_wait_pending or self.disable_control or self._startup_wait_seconds == 0:
+            return
+        self._first_heartbeat.wait(self._startup_wait_seconds)
+        self._startup_wait_pending = False
 
     def _heartbeat(self) -> None:
         try:
@@ -247,6 +261,7 @@ class AcpClient(Background):
             input_summary=input_summary, user_input=user_input, full_input=full_input, model_used=model_used
         )
         self._resume_after_fork()
+        self._await_startup_control_state()
         self._control.begin_run()
         started = time.monotonic()
         try:
@@ -273,6 +288,9 @@ class AcpClient(Background):
             input_summary=input_summary, user_input=user_input, full_input=full_input, model_used=model_used
         )
         self._resume_after_fork()
+        if self._startup_wait_pending:
+            # Off the event loop: the wait blocks up to startup_wait_seconds, once.
+            await asyncio.to_thread(self._await_startup_control_state)
         self._control.begin_run()
         started = time.monotonic()
         try:

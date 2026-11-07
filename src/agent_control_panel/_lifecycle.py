@@ -31,6 +31,9 @@ class Background:
         self._started = False
         self._restart_after_fork = False
         self._threads: list[threading.Thread] = []
+        # Set once a heartbeat has completed since start(); the first runs wait for it (see AcpClient).
+        self._first_heartbeat = threading.Event()
+        self._startup_wait_pending = False
         _instances.add(self)
 
     def _heartbeat(self) -> None:
@@ -44,6 +47,8 @@ class Background:
             self._started = True
             self._closing.clear()
             self._wake.clear()
+            self._first_heartbeat.clear()
+            self._startup_wait_pending = True
             self._threads = [
                 threading.Thread(target=self._heartbeat_loop, name="acp-heartbeat", daemon=True),
                 threading.Thread(target=self._flush_loop, name="acp-flush", daemon=True),
@@ -60,6 +65,7 @@ class Background:
             threads, self._threads = self._threads, []
         self._closing.set()
         self._wake.set()
+        self._first_heartbeat.set()  # nothing waits for a heartbeat that will not come
         atexit.unregister(self._atexit)
         # On a helper thread so that nothing (a hung connection, a slow DNS lookup) holds stop() or the
         # interpreter's exit past the timeout.
@@ -90,6 +96,7 @@ class Background:
         self._state_lock = threading.Lock()
         self._closing = threading.Event()
         self._wake = threading.Event()
+        self._first_heartbeat = threading.Event()
         self._control.reset_lock_after_fork()
         self._reporter.reset_after_fork()
         self._restart_after_fork = self._started
@@ -103,7 +110,10 @@ class Background:
 
     def _heartbeat_loop(self) -> None:
         while True:
-            self._heartbeat()
+            try:
+                self._heartbeat()
+            finally:
+                self._first_heartbeat.set()
             if self._closing.wait(self._heartbeat_seconds):
                 return
 
