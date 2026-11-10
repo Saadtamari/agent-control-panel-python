@@ -33,9 +33,9 @@ classifiers = [
 [project.urls]
 Homepage = "https://agentcontrolpanel.si"
 Documentation = "https://agentcontrolpanel.si/docs"
-Source = "https://github.com/Saadtamari/agent-control-panel-python"
-Issues = "https://github.com/Saadtamari/agent-control-panel-python/issues"
-Changelog = "https://github.com/Saadtamari/agent-control-panel-python/blob/main/CHANGELOG.md"
+Source = "https://github.com/agentcontrolpanel-si/agent-control-panel-python"
+Issues = "https://github.com/agentcontrolpanel-si/agent-control-panel-python/issues"
+Changelog = "https://github.com/agentcontrolpanel-si/agent-control-panel-python/blob/main/CHANGELOG.md"
 
 [tool.hatch.version]
 path = "src/agent_control_panel/_version.py"
