@@ -137,3 +137,84 @@ def test_chunking_keeps_order_and_puts_an_oversized_row_alone() -> None:
     rows = ["a" * 10, "b" * 50, "c" * 10, "d" * 10]
     assert chunk_by_size(rows, 30) == [["a" * 10], ["b" * 50], ["c" * 10, "d" * 10]]
     assert chunk_by_size([], 30) == []
+
+
+# Agent framework results, wrapped as they are (no adapter).
+def _graph_state() -> dict[str, Any]:
+    """LangGraph's graph.invoke() result: AI messages carry usage_metadata, tool messages do not."""
+    return {
+        "messages": [
+            SimpleNamespace(type="human", content="Where is order 42?"),
+            SimpleNamespace(
+                type="ai",
+                content="",
+                tool_calls=[{"name": "order_status"}],
+                usage_metadata={"input_tokens": 20, "output_tokens": 5, "total_tokens": 25},
+            ),
+            SimpleNamespace(type="tool", content="Order 42 ships tomorrow.", tool_call_id="c1"),
+            SimpleNamespace(
+                type="ai",
+                content="Order 42 ships tomorrow.",
+                usage_metadata={"input_tokens": 30, "output_tokens": 8, "total_tokens": 38},
+            ),
+        ]
+    }
+
+
+def test_openai_agents_run_result_text_and_tokens() -> None:
+    from agent_control_panel import extract_tokens
+
+    run = SimpleNamespace(
+        final_output="Order 42 ships tomorrow.",
+        context_wrapper=SimpleNamespace(
+            usage=SimpleNamespace(requests=2, input_tokens=50, output_tokens=13, total_tokens=63)
+        ),
+    )
+    assert extract_text(run) == "Order 42 ships tomorrow."
+    tokens = extract_tokens(run)
+    assert tokens is not None
+    assert (tokens.tokens_input, tokens.tokens_output, tokens.tokens_total) == (50, 13, 63)
+    assert extract_text(SimpleNamespace(final_output={"order_id": "42"})) == '{"order_id": "42"}'
+
+
+def test_langgraph_state_text_and_summed_tokens() -> None:
+    from agent_control_panel import extract_tokens
+
+    state = _graph_state()
+    assert extract_text(state) == "Order 42 ships tomorrow."
+    tokens = extract_tokens(state)
+    assert tokens is not None
+    assert (tokens.tokens_input, tokens.tokens_output, tokens.tokens_total) == (50, 13, 63)
+
+
+def test_crewai_output_text_and_tokens() -> None:
+    from agent_control_panel import extract_tokens
+
+    usage = SimpleNamespace(total_tokens=63, prompt_tokens=50, completion_tokens=13, successful_requests=2)
+    output = SimpleNamespace(raw="Order 42 ships tomorrow.", token_usage=usage, tasks_output=[])
+    assert extract_text(output) == "Order 42 ships tomorrow."
+    tokens = extract_tokens(output)
+    assert tokens is not None
+    assert (tokens.tokens_input, tokens.tokens_output, tokens.tokens_total) == (50, 13, 63)
+    assert extract_text(SimpleNamespace(raw="no token_usage, not a CrewOutput")) is None
+
+
+def test_single_langchain_message_and_unrelated_shapes() -> None:
+    from agent_control_panel import extract_tokens
+
+    message = SimpleNamespace(
+        type="ai",
+        content=[{"type": "text", "text": "Hi "}, {"type": "text", "text": "there"}],
+        usage_metadata={"input_tokens": 4, "output_tokens": 2, "total_tokens": 6},
+    )
+    assert extract_text({"messages": [message]}) == "Hi there"
+    assert (
+        extract_text(SimpleNamespace(content="plain", usage_metadata={"input_tokens": 1, "output_tokens": 1}))
+        == "plain"
+    )
+    tokens = extract_tokens(message)
+    assert tokens is not None
+    assert tokens.tokens_total == 6
+    assert extract_text({"messages": []}) is None
+    assert extract_tokens({"messages": [SimpleNamespace(type="human", content="x")]}) is None
+    assert extract_text(SimpleNamespace(content="no usage metadata")) is None

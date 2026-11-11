@@ -89,6 +89,10 @@ def extract_tokens(result: Any) -> TokenUsage | None:
       prompt-cache tokens (``cache_creation_input_tokens``, ``cache_read_input_tokens``) count as input
     - Google Gemini: ``usage_metadata`` (Python SDK) or ``usageMetadata`` (REST JSON), also under ``response``
     - camelCase ``usage.inputTokens`` / ``promptTokens`` shapes (as sent by the Vercel AI SDK)
+    - OpenAI Agents SDK ``RunResult``: ``context_wrapper.usage`` (every model call of the run)
+    - CrewAI ``CrewOutput``: ``token_usage``
+    - LangGraph state (``{"messages": [...]}``): the sum of each AI message's ``usage_metadata``; a single
+      LangChain message: its ``usage_metadata``
 
     Never raises; report tokens yourself with ``report_run`` when this returns None.
     """
@@ -110,6 +114,45 @@ def extract_tokens(result: Any) -> TokenUsage | None:
             found = _from_gemini(meta)
             if found is not None:
                 return found
+        # OpenAI Agents SDK: the run's usage adds up every model call (tool turns included).
+        wrapper = _get(result, "context_wrapper")
+        if _is_object(wrapper):
+            run_usage = _get(wrapper, "usage")
+            if _is_object(run_usage):
+                found = _from_usage(run_usage)
+                if found is not None:
+                    return found
+        # CrewAI: CrewOutput.token_usage (prompt_tokens / completion_tokens) covers every model call.
+        crew_usage = _get(result, "token_usage")
+        if _is_object(crew_usage):
+            found = _from_usage(crew_usage)
+            if found is not None:
+                return found
+        # LangChain: usage_metadata {input_tokens, output_tokens, total_tokens} on AI messages.
+        single = _langchain_usage(_get(result, "usage_metadata"))
+        if single is not None:
+            return single
+        messages = _get(result, "messages")
+        if isinstance(messages, (list, tuple)):
+            parts = [
+                u
+                for u in (_langchain_usage(_get(m, "usage_metadata")) for m in messages if _is_object(m))
+                if u
+            ]
+            if parts:
+                return TokenUsage(
+                    sum(p.tokens_input for p in parts),
+                    sum(p.tokens_output for p in parts),
+                    sum(p.tokens_total for p in parts),
+                )
     except Exception:
         return None
+    return None
+
+
+def _langchain_usage(meta: Any) -> TokenUsage | None:
+    if isinstance(meta, Mapping) and _has(meta, "input_tokens", "output_tokens"):
+        return _usage(
+            _num(_get(meta, "input_tokens")), _num(_get(meta, "output_tokens")), _get(meta, "total_tokens")
+        )
     return None

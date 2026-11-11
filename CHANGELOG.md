@@ -4,6 +4,19 @@ All notable changes to the Python SDK. Versions stay `0.x` until the wire contra
 customers; after the first public release, contract changes are additive only (clients live inside customer
 apps). The wire contract is the same as the Node SDK (`agent-control-panel` on npm).
 
+## 0.1.4 (2026-11-11)
+
+Agent framework results are read as they are; no adapter code. `wrap_agent_run(lambda: ...)` now records the
+answer and tokens of:
+
+- an OpenAI Agents SDK `RunResult` (`Runner.run_sync()` / `await Runner.run()`): `final_output` (structured
+  output as JSON) and `context_wrapper.usage`, every model call of the run;
+- a LangGraph state (`graph.invoke()`, `{"messages": [...]}`): the last AI message as the answer and the sum of
+  every AI message's `usage_metadata` as tokens; a single LangChain message (`chat_model.invoke()`) too;
+- a CrewAI `CrewOutput` (`crew.kickoff()`): `raw` and `token_usage`.
+
+Additive: shapes that were read before read the same.
+
 ## 0.1.3 (2026-11-07)
 
 A pause now holds across restarts. A restarted process starts `idle` until ACP's first heartbeat reply, and

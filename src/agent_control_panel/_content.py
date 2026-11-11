@@ -67,7 +67,54 @@ def _extract(result: Any) -> str | None:
         text = _join_text(_read(body, "parts")) if _is_object(body) else None
         if text:
             return text
+    # OpenAI Agents SDK: Runner.run() returns a RunResult whose final_output is the answer.
+    final_output = _read(result, "final_output")
+    if isinstance(final_output, str):
+        if final_output:
+            return final_output
+    elif final_output is not None:
+        try:
+            dumped = json.dumps(final_output, default=lambda o: getattr(o, "__dict__", str(o)))
+        except (TypeError, ValueError):
+            dumped = None
+        if dumped:
+            return dumped
+    # LangGraph: graph.invoke() returns the state; the answer is the last AI message.
+    messages = _read(result, "messages")
+    if isinstance(messages, (list, tuple)) and messages:
+        last = _last_ai_message(messages)
+        if last is not None:
+            content = _read(last, "content")
+            text = _text(content) or _join_text(content)
+            if text:
+                return text
+    # CrewAI: crew.kickoff() returns a CrewOutput; raw is the final answer (token_usage marks the shape).
+    raw = _read(result, "raw")
+    if isinstance(raw, str) and raw and _read(result, "token_usage") is not None:
+        return raw
+    # A single LangChain message (chat_model.invoke()).
+    content = _read(result, "content")
+    if isinstance(content, str) and content and _read(result, "usage_metadata") is not None:
+        return content
     return _text(_read(result, "text"))
+
+
+def _is_ai_message(message: Any) -> bool:
+    if not _is_object(message):
+        return False
+    return (
+        _read(message, "type") == "ai"
+        or _read(message, "role") == "assistant"
+        or isinstance(_read(message, "usage_metadata"), Mapping)
+    )
+
+
+def _last_ai_message(messages: Any) -> Any:
+    for message in reversed(list(messages)):
+        if _is_ai_message(message):
+            return message
+    tail = messages[-1]
+    return tail if _is_object(tail) else None
 
 
 def extract_text(result: Any) -> str | None:
@@ -79,6 +126,9 @@ def extract_text(result: Any) -> str | None:
     - Anthropic Messages: ``content`` blocks of type ``text``
     - Google Gemini: ``candidates[0].content.parts[].text`` (also under ``response``)
     - ``text`` (Vercel AI SDK shape)
+    - OpenAI Agents SDK ``RunResult``: ``final_output`` (structured output as JSON)
+    - LangGraph state (``{"messages": [...]}``): the last AI message's content; a single LangChain message
+    - CrewAI ``CrewOutput``: ``raw``
 
     Only reads keys and attributes; never calls a method on the result. Never raises.
     """

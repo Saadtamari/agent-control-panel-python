@@ -47,7 +47,9 @@ def handle(question: str) -> str:
 ```
 
 `wrap_agent_run` records duration, success or error, token usage and the answer text, read from the
-response objects of the OpenAI, Anthropic and Google Gemini SDKs (and plain dicts of the same shape). For
+response objects of the OpenAI, Anthropic and Google Gemini SDKs (and plain dicts of the same shape), and
+from agent framework results as they are (since 0.1.4): an OpenAI Agents SDK `RunResult`, a LangGraph state or
+LangChain message, and a CrewAI `CrewOutput`, with tokens summed over every model call of the run. For
 anything else, return a string or call `report_run(...)` yourself. While the agent is paused or stopped it
 raises `AgentPausedError` **without calling your function**, so a pause really stops model calls.
 
@@ -160,7 +162,7 @@ swaps arrive with the next heartbeat (within 30 s), and prompt changes are fetch
 | `wrap_agent_run(fn, *, user_input, full_input, input_summary, model_used)` | Run `fn()`, report it (with the answer text from the result), re-raise its exception unchanged. Raises `AgentPausedError` while paused or stopped. After `start()`, the first call waits up to `startup_wait_seconds` for ACP's first heartbeat reply, so a pause holds across restarts (fail-open: if ACP does not answer, the run goes ahead). |
 | `wrap_agent_run_async(fn, ...)` | The same for coroutines: `await acp.wrap_agent_run_async(lambda: client.create(...))`. |
 | `report_run(status, **fields)` | Report a run yourself (tokens, model, timings, summaries, `user_input`, `full_input`, `full_output`, `error_message`, `trigger`, optional `dedupe_key`). Buffered; never raises. |
-| `extract_text(result)` / `extract_tokens(result)` | The answer text / token counts of an OpenAI, Anthropic or Gemini response, or `None`. |
+| `extract_text(result)` / `extract_tokens(result)` | The answer text / token counts of an OpenAI, Anthropic or Gemini response, or an OpenAI Agents SDK, LangGraph or CrewAI result, or `None`. |
 | `fetch_prompt()` | The agent's current prompt from ACP (composed with its skills), cached 60 s; falls back to the last prompt on any error. |
 | `get_effective_model(fallback)` | The model ACP asked for (after a model swap), else `fallback`. |
 | `status` | `idle`, `running`, `paused` or `stopped`. |
